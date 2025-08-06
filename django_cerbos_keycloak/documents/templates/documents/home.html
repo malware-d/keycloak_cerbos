@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Management System - Django + Cerbos + Keycloak</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header .subtitle {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+
+        .user-info {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .user-welcome {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .user-welcome h3 {
+            color: #2c3e50;
+            font-size: 1.5rem;
+        }
+
+        .logout-btn {
+            background: #e74c3c;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .logout-btn:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(231, 76, 60, 0.3);
+        }
+
+        .role-badges {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .role-badge {
+            background: #3498db;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .role-badge.admin { background: #e74c3c; }
+        .role-badge.manager { background: #f39c12; }
+        .role-badge.user { background: #27ae60; }
+        .role-badge.reviewer { background: #9b59b6; }
+
+        .documents-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .documents-section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+            text-align: center;
+        }
+
+        .documents-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-top: 25px;
+        }
+
+        .document-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            border-left: 5px solid #3498db;
+        }
+
+        .document-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .document-card.marketing { border-left-color: #e74c3c; }
+        .document-card.finance { border-left-color: #f39c12; }
+        .document-card.hr { border-left-color: #27ae60; }
+        .document-card.it { border-left-color: #9b59b6; }
+
+        .document-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .document-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .document-status {
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-approved { background: #d4edda; color: #155724; }
+        .status-rejected { background: #f8d7da; color: #721c24; }
+        .status-draft { background: #e2e3e5; color: #383d41; }
+
+        .document-meta {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+        }
+
+        .document-meta i {
+            margin-right: 5px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 25px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .btn-view { background: #3498db; color: white; }
+        .btn-edit { background: #f39c12; color: white; }
+        .btn-delete { background: #e74c3c; color: white; }
+        .btn-approve { background: #27ae60; color: white; }
+        .btn-reject { background: #95a5a6; color: white; }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .test-scenarios {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-scenarios h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .scenario-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .scenario-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid #3498db;
+        }
+
+        .scenario-card h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .scenario-card ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .scenario-card li {
+            padding: 3px 0;
+            color: #555;
+        }
+
+        .scenario-card li i {
+            color: #27ae60;
+            margin-right: 8px;
+        }
+
+        .login-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .login-btn {
+            background: #3498db;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            text-decoration: none;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-block;
+            margin-top: 20px;
+        }
+
+        .login-btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(52, 152, 219, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .documents-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .user-welcome {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-shield-alt"></i> Document Management System</h1>
+            <p class="subtitle">Django + Cerbos + Keycloak Integration Demo</p>
+        </div>
+
+        {% if user.is_authenticated %}
+            <div class="user-info">
+                <div class="user-welcome">
+                    <div>
+                        <h3><i class="fas fa-user-circle"></i> Welcome, {{ user.username }}!</h3>
+                        <p>Authenticated via Keycloak SSO</p>
+                    </div>
+                    <a href="{% url 'account_logout' %}" class="logout-btn">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </div>
+                <div class="role-badges">
+                    <!-- These would be dynamically populated from user roles -->
+                    <span class="role-badge admin">Admin</span>
+                    <span class="role-badge manager">Manager</span>
+                    <span class="role-badge user">User</span>
+                </div>
+            </div>
+
+            <div class="documents-section">
+                <h2><i class="fas fa-file-alt"></i> Document Management</h2>
+                <p style="text-align: center; color: #7f8c8d; margin-bottom: 25px;">
+                    Test various authorization scenarios with different document types and user roles
+                </p>
+
+                <div class="documents-grid">
+                    <!-- Marketing Document -->
+                    <div class="document-card marketing">
+                        <div class="document-header">
+                            <div class="document-title">
+                                <i class="fas fa-bullhorn"></i> Marketing Campaign Plan
+                            </div>
+                            <span class="document-status status-pending">Pending Approval</span>
+                        </div>
+                        <div class="document-meta">
+                            <div><i class="fas fa-user"></i> Author: john_doe</div>
+                            <div><i class="fas fa-building"></i> Department: Marketing</div>
+                            <div><i class="fas fa-calendar"></i> Created: Today</div>
+                        </div>
+                        <div class="action-buttons">
+                            <a href="{% url 'manage_document' 'doc_marketing_001' 'view' %}" class="action-btn btn-view">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                            <a href="{% url 'manage_document' 'doc_marketing_001' 'edit' %}" class="action-btn btn-edit">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a href="{% url 'manage_document' 'doc_marketing_001' 'approve' %}" class="action-btn btn-approve">
+                                <i class="fas fa-check"></i> Approve
+                            </a>
+                            <a href="{% url 'manage_document' 'doc_marketing_001' 'reject' %}" class="action-btn btn-reject">
+                                <i class="fas fa-times"></i> Reject
+                            </a>
+                            <a href="{% url 'manage_document' 'doc_marketing_001' 'delete' %}" class="action-btn btn-delete">
+                                <i class="fas fa-trash"></i> Delete
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Finance Document -->
+                    <div class="document-card finance">
+                        <div class="document-header">
+                            <div class="document-title">
+                                <i class="fas fa-chart-line"></i> Q4 Budget Report
+                            </div>
+                            <span class="document-status status-approved">Approved</span>
+                        </div>
+                        <div class="document-meta">
+                            <div><i class="fas fa-user"></i> Author: finance_user</div>
+                            <div><i class="fas fa-building"></i> Department: Finance</div>
+                            <div><i class="fas fa-calendar"></i> Created: Yesterday</div>
+                        </div>
+                        <div class="action-buttons">
+                            <a href="{% url 'manage_document' 'doc_finance_001' 'view' %}" class="action-btn btn-view">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                            <a href="{% url 'manage_document' 'doc_finance_001' 'edit' %}" class="action-btn btn-edit">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a href="{% url 'manage_document' 'doc_finance_001' 'delete' %}" class="action-btn btn-delete">
+                                <i class="fas fa-trash"></i> Delete
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- HR Document -->
+                    <div class="document-card hr">
+                        <div class="document-header">
+                            <div class="document-title">
+                                <i class="fas fa-users"></i> Employee Handbook
+                            </div>
+                            <span class="document-status status-draft">Draft</span>
+                        </div>
+                        <div class="document-meta">
+                            <div><i class="fas fa-user"></i> Author: {{ user.username }}</div>
+                            <div><i class="fas fa-building"></i> Department: HR</div>
+                            <div><i class="fas fa-calendar"></i> Created: 2 days ago</div>
+                        </div>
+                        <div class="action-buttons">
+                            <a href="{% url 'manage_document' 'doc_hr_001' 'view' %}" class="action-btn btn-view">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                            <a href="{% url 'manage_document' 'doc_hr_001' 'edit' %}" class="action-btn btn-edit">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a href="{% url 'manage_document' 'doc_hr_001' 'approve' %}" class="action-btn btn-approve">
+                                <i class="fas fa-check"></i> Approve
+                            </a>
+                            <a href="{% url 'manage_document' 'doc_hr_001' 'delete' %}" class="action-btn btn-delete">
+                                <i class="fas fa-trash"></i> Delete
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- IT Document -->
+                    <div class="document-card it">
+                        <div class="document-header">
+                            <div class="document-title">
+                                <i class="fas fa-server"></i> Security Policy
+                            </div>
+                            <span class="document-status status-rejected">Rejected</span>
+                        </div>
+                        <div class="document-meta">
+                            <div><i class="fas fa-user"></i> Author: it_admin</div>
+                            <div><i class="fas fa-building"></i> Department: IT</div>
+                            <div><i class="fas fa-calendar"></i> Created: 1 week ago</div>
+                        </div>
+                        <div class="action-buttons">
+                            <a href="{% url 'manage_document' 'doc_it_001' 'view' %}" class="action-btn btn-view">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                            <a href="{% url 'manage_document' 'doc_it_001' 'edit' %}" class="action-btn btn-edit">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a href="{% url 'manage_document' 'doc_it_001' 'delete' %}" class="action-btn btn-delete">
+                                <i class="fas fa-trash"></i> Delete
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="test-scenarios">
+                <h3><i class="fas fa-flask"></i> Authorization Test Scenarios</h3>
+                <div class="scenario-grid">
+                    <div class="scenario-card">
+                        <h4>Admin Role</h4>
+                        <ul>
+                            <li><i class="fas fa-check"></i> All actions on any document</li>
+                            <li><i class="fas fa-check"></i> Cross-department access</li>
+                            <li><i class="fas fa-check"></i> System-wide permissions</li>
+                        </ul>
+                    </div>
+
+                    <div class="scenario-card">
+                        <h4>Manager Role</h4>
+                        <ul>
+                            <li><i class="fas fa-check"></i> View, edit, approve documents</li>
+                            <li><i class="fas fa-check"></i> Department-specific access</li>
+                            <li><i class="fas fa-times"></i> Cannot delete system docs</li>
+                        </ul>
+                    </div>
+
+                    <div class="scenario-card">
+                        <h4>User Role</h4>
+                        <ul>
+                            <li><i class="fas fa-check"></i> View/edit own documents</li>
+                            <li><i class="fas fa-times"></i> Cannot approve documents</li>
+                            <li><i class="fas fa-times"></i> Limited department access</li>
+                        </ul>
+                    </div>
+
+                    <div class="scenario-card">
+                        <h4>John Doe Principal</h4>
+                        <ul>
+                            <li><i class="fas fa-check"></i> Approve Marketing docs</li>
+                            <li><i class="fas fa-check"></i> Only pending_approval status</li>
+                            <li><i class="fas fa-times"></i> No other department access</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+        {% else %}
+            <div class="login-section">
+                <h2><i class="fas fa-lock"></i> Authentication Required</h2>
+                <p>Please login through Keycloak to access the Document Management System</p>
+                <a href="{% url 'account_login' %}" class="login-btn">
+                <!-- <a href="/accounts/oidc/keycloak/login/" class="login-btn"></a> -->
+                    <i class="fas fa-sign-in-alt"></i> Login with Keycloak
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>
+
+
+
+
+<!-- <!DOCTYPE html>
+<html>
+<head>
+    <title>Django Cerbos Keycloak Integration</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .action-buttons { margin: 20px 0; }
+        .action-buttons a { 
+            display: inline-block; 
+            margin: 5px; 
+            padding: 10px 15px; 
+            background: #007cba; 
+            color: white; 
+            text-decoration: none; 
+            border-radius: 5px; 
+        }
+        .user-info { 
+            background: #f0f0f0; 
+            padding: 15px; 
+            border-radius: 5px; 
+            margin-bottom: 20px; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Django Cerbos Keycloak Integration Demo</h1>
+        
+        {% if user.is_authenticated %}
+            <div class="user-info">
+                <h3>Welcome, {{ user.username }}!</h3>
+                <p>You are successfully authenticated via Keycloak.</p>
+                <a href="{% url 'account_logout' %}">Logout</a>
+            </div>
+            
+            <h2>Document Management Actions</h2>
+            <p>Try different actions on Document ID: <strong>doc123</strong></p>
+            
+            <div class="action-buttons">
+                <a href="{% url 'manage_document' 'doc123' 'view' %}">View Document</a>
+                <a href="{% url 'manage_document' 'doc123' 'edit' %}">Edit Document</a>
+                <a href="{% url 'manage_document' 'doc123' 'delete' %}">Delete Document</a>
+                <a href="{% url 'manage_document' 'doc123' 'approve' %}">Approve Document</a>
+            </div>
+            
+            <h3>How to test:</h3>
+            <ul>
+                <li><strong>Admin role:</strong> Can perform all actions</li>
+                <li><strong>User role:</strong> Can only view/edit own documents</li>
+                <li><strong>Manager role:</strong> Can view, edit, and approve documents</li>
+                <li><strong>john_doe principal:</strong> Can approve Marketing dept documents with pending_approval status</li>
+            </ul>
+        {% else %}
+            <p>Please <a href="{% url 'account_login' %}">login</a> to access the application.</p>
+        {% endif %}
+    </div>
+</body>
+</html> -->
