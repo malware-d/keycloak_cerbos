@@ -1,6 +1,32 @@
 server:
   httpListenAddr: ":3592"
+  grpcListenAddr: ":3593"
+
+adminAPI:
+  enabled: true
+  adminListenAddress: ":3597"
+
+logLevel: debug
+
+audit:
+  enabled: true
+  accessLogsEnabled: true
+  decisionLogsEnabled: true
+  backend: file
+  file:
+    path: stdout
+
 storage:
-  driver: "disk"
+  driver: disk
   disk:
     directory: /policies
+
+
+
+
+# server:
+#   httpListenAddr: ":3592"
+# storage:
+#   driver: "disk"
+#   disk:
+#     directory: /policies

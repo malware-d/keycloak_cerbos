@@ -1,0 +1,43 @@
+# ========================================
+# external_consultant.yaml - FIXED
+# ========================================
+apiVersion: api.cerbos.dev/v1
+principalPolicy:
+  version: default
+  principal: "external_consultant"
+  rules:
+    - resource: document
+      actions:
+        # Can only view specific project documents they're assigned to
+        - action: "view"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.resource.attr.classification == 'public'
+                  - expr: request.resource.attr.content_type in ['project_plan', 'marketing_material']
+                  - expr: request.resource.attr.status == 'approved'
+        
+        # Time-restricted access (would need to implement time checks in real scenario)
+        - action: "edit"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.resource.attr.author == request.principal.id
+                  - expr: request.resource.attr.classification == 'public'
+                  - expr: request.resource.attr.status == 'draft'
+                  # In real implementation: check if current date is within contract period
+        
+        # Explicitly denied access to internal operations
+        - action: "view"
+          effect: EFFECT_DENY
+          condition:
+            match:
+              any:
+                of:
+                  - expr: request.resource.attr.department in ['Finance', 'HR']
+                  - expr: request.resource.attr.content_type in ['financial_report', 'security_policy']
+                  - expr: request.resource.attr.classification in ['confidential', 'restricted']

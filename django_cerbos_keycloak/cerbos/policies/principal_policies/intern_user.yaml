@@ -1,0 +1,41 @@
+# ========================================
+# intern_user.yaml - FIXED
+# ========================================
+apiVersion: api.cerbos.dev/v1
+principalPolicy:
+  version: default
+  principal: "intern_user"
+  rules:
+    - resource: document
+      actions:
+        # Can only view public documents
+        - action: "view"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.resource.attr.classification == 'public'
+                  - expr: request.resource.attr.status == 'approved'
+
+        # Can edit their own draft documents only
+        - action: "edit"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.resource.attr.author == request.principal.id
+                  - expr: request.resource.attr.status == 'draft'
+                  - expr: request.resource.attr.classification == 'public'
+
+        # Explicitly denied access to confidential or financial documents
+        - action: "view"
+          effect: EFFECT_DENY
+          condition:
+            match:
+              any:
+                of:
+                  - expr: request.resource.attr.classification in ['confidential', 'restricted']
+                  - expr: request.resource.attr.is_financial == true
+                  - expr: request.resource.attr.project_budget > 5000

@@ -1,0 +1,40 @@
+# ========================================
+# project_manager.yaml - FIXED
+# ========================================
+apiVersion: api.cerbos.dev/v1
+principalPolicy:
+  version: default
+  principal: "project_manager"
+  rules:
+    - resource: document
+      actions:
+        # Can view documents from multiple departments for project coordination
+        - action: "view"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              any:
+                of:
+                  - expr: request.resource.attr.department in ['Marketing', 'IT', 'HR']
+                  - expr: request.resource.attr.classification == 'public'
+
+        # Can edit project-related documents
+        - action: "edit"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.resource.attr.project_budget <= 75000
+                  - expr: request.resource.attr.status in ['draft', 'pending_approval']
+
+        # Can approve low-value cross-departmental documents
+        - action: "approve"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.resource.attr.project_budget <= 15000
+                  - expr: request.resource.attr.classification in ['internal', 'public']
+                  - expr: request.resource.attr.author != request.principal.id

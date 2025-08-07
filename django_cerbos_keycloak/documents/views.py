@@ -3,76 +3,14 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.contrib import messages
-from .utils import get_user_roles
+from .utils import get_user_roles, get_user_attr
+from .utils import extract_roles_and_attrs_from_session, extract_roles_and_attrs_from_jwt
+import logging
 from .cerbos_client import cerbos_client
 from cerbos.sdk.model import Principal, Resource
 import json
 from datetime import datetime
-
-# Document metadata for testing various scenarios
-DOCUMENT_METADATA = {
-    'doc_marketing_001': {
-        'title': 'Marketing Campaign Plan',
-        'author': 'john_doe',
-        'department': 'Marketing',
-        'status': 'pending_approval',
-        'created_at': '2025-01-01',
-        'classification': 'internal',
-        'project_budget': 50000,
-        'content_type': 'campaign_plan'
-    },
-    'doc_finance_001': {
-        'title': 'Q4 Budget Report',
-        'author': 'finance_user',
-        'department': 'Finance',
-        'status': 'approved',
-        'created_at': '2025-01-02',
-        'classification': 'confidential',
-        'project_budget': 1000000,
-        'content_type': 'financial_report'
-    },
-    'doc_hr_001': {
-        'title': 'Employee Handbook',
-        'author': 'hr_manager',
-        'department': 'HR',
-        'status': 'draft',
-        'created_at': '2025-01-03',
-        'classification': 'internal',
-        'project_budget': 10000,
-        'content_type': 'policy_document'
-    },
-    'doc_it_001': {
-        'title': 'Security Policy',
-        'author': 'it_admin',
-        'department': 'IT',
-        'status': 'rejected',
-        'created_at': '2025-01-04',
-        'classification': 'confidential',
-        'project_budget': 25000,
-        'content_type': 'security_policy'
-    },
-    # Additional test documents
-    'doc_marketing_002': {
-        'title': 'Brand Guidelines',
-        'author': 'jane_smith',
-        'department': 'Marketing',
-        'status': 'approved',
-        'created_at': '2025-01-05',
-        'classification': 'public',
-        'project_budget': 15000,
-        'content_type': 'brand_document'
-    },
-    'doc_finance_002': {
-        'title': 'Expense Report',
-        'author': 'john_finance',
-        'department': 'Finance',
-        'status': 'pending_review',
-        'created_at': '2025-01-06',
-        'classification': 'restricted',
-        'project_budget': 5000,
-        'content_type': 'expense_report'
-    }
-}
+from .data import DOCUMENT_METADATA
 
 def home(request):
     """Enhanced home view with user context"""
@@ -80,8 +18,12 @@ def home(request):
         'documents': DOCUMENT_METADATA,
         'current_user': request.user.username if request.user.is_authenticated else None
     }
+    if request.user.is_authenticated:
+        context['user_roles'] = get_user_roles(request)
     return render(request, 'documents/home.html', context)
 
+
+logger = logging.getLogger(__name__)
 @login_required
 def manage_document(request, document_id, action):
     """
@@ -94,9 +36,19 @@ def manage_document(request, document_id, action):
         return HttpResponseForbidden("Document not found.")
     
     doc_meta = DOCUMENT_METADATA[document_id]
+
+
+    roles, attrs = extract_roles_and_attrs_from_session(request)
+    if not roles:
+        roles, attrs = extract_roles_and_attrs_from_jwt(request)
+    logger.info(f"[SESSION] Final roles for user {request.user.username}: {roles}")
+    logger.info(f"[SESSION] Final attrs for user {request.user.username}: {attrs}")
     
     # Extract user roles from Keycloak
     user_roles = get_user_roles(request)
+    department = get_user_attr(request, "department")
+    seniority = get_user_attr(request, "seniority_level")
+    project_access = get_user_attr(request, "project_access_level")
     
     if not user_roles:
         print(f"[❌] No roles assigned for user: {request.user.username}")
@@ -110,9 +62,9 @@ def manage_document(request, document_id, action):
         roles=set(user_roles),
         attr={
             "email": getattr(request.user, 'email', ''),
-            "department": get_user_department(request.user.username),
-            "seniority_level": get_user_seniority(user_roles),
-            "project_access_level": get_project_access_level(user_roles)
+            "department": department,
+            "seniority_level": seniority,
+            "project_access_level": project_access
         }
     )
     
@@ -139,6 +91,9 @@ def manage_document(request, document_id, action):
     
     # Check authorization with Cerbos
     try:
+        logger.info(f"[CERBOS][CHECK] Principal: {principal}")
+        logger.info(f"[CERBOS][CHECK] Resource: {resource}")
+        logger.info(f"[CERBOS][CHECK] Action: {action}")
         allowed = cerbos_client.is_allowed(action, principal, resource)
         
         # Log authorization decision
@@ -157,37 +112,6 @@ def manage_document(request, document_id, action):
     # Execute the authorized action
     return execute_document_action(request, document_id, action, doc_meta, principal)
 
-def get_user_department(username):
-    """Map users to departments for testing"""
-    department_mapping = {
-        'john_doe': 'Marketing',
-        'finance_user': 'Finance', 
-        'hr_manager': 'HR',
-        'it_admin': 'IT',
-        'jane_smith': 'Marketing',
-        'john_finance': 'Finance'
-    }
-    return department_mapping.get(username, 'General')
-
-def get_user_seniority(roles):
-    """Determine seniority level based on roles"""
-    if 'admin' in roles:
-        return 'executive'
-    elif 'manager' in roles:
-        return 'senior'
-    elif 'reviewer' in roles:
-        return 'mid'
-    else:
-        return 'junior'
-
-def get_project_access_level(roles):
-    """Determine project access level"""
-    if 'admin' in roles:
-        return 'all_projects'
-    elif 'manager' in roles:
-        return 'department_projects'
-    else:
-        return 'assigned_projects'
 
 def get_authorization_error_message(action, doc_meta, user_roles, username):
     """Generate contextual error messages"""
@@ -362,9 +286,10 @@ def user_permissions(request):
     return JsonResponse({
         'username': request.user.username,
         'roles': list(user_roles) if user_roles else [],
-        'department': get_user_department(request.user.username),
-        'seniority_level': get_user_seniority(user_roles),
-        'project_access_level': get_project_access_level(user_roles),
+        'department': get_user_attr(request, "department"),
+        'seniority_level': get_user_attr(request, "seniority_level"),
+        'project_access_level': get_user_attr(request, "project_access_level"),
+        'email': getattr(request.user, 'email', ''),
         'timestamp': datetime.now().isoformat()
     })
 
@@ -382,8 +307,10 @@ def bulk_document_check(request):
                 id=request.user.username,
                 roles=set(user_roles),
                 attr={
-                    "department": get_user_department(request.user.username),
-                    "seniority_level": get_user_seniority(user_roles)
+                "department": get_user_attr(request, "department"),
+                "seniority_level": get_user_attr(request, "seniority_level"),
+                "project_access_level": get_user_attr(request, "project_access_level"),
+                "email": getattr(request.user, 'email', ''),
                 }
             )
             
@@ -398,10 +325,14 @@ def bulk_document_check(request):
                     id=doc_id,
                     kind="document",
                     attr={
-                        "author": doc_meta['author'],
-                        "status": doc_meta['status'],
-                        "department": doc_meta['department'],
-                        "classification": doc_meta['classification']
+                    "author": doc_meta['author'],
+                    "status": doc_meta['status'],
+                    "department": doc_meta['department'],
+                    "classification": doc_meta['classification'],
+                    "project_budget": doc_meta['project_budget'],
+                    "content_type": doc_meta['content_type'],
+                    "created_at": doc_meta['created_at'],
+                    "title": doc_meta['title'],
                     }
                 )
                 

@@ -329,11 +329,11 @@
                     </a>
                 </div>
                 <div class="role-badges">
-                    {% for role in user_roles %}
-                        <span class="role-badge {{ role|lower }}">{{ role|title }}</span>
-                    {% endfor %}
+                    <!-- These would be dynamically populated from user roles -->
+                    <span class="role-badge admin">Admin</span>
+                    <span class="role-badge manager">Manager</span>
+                    <span class="role-badge user">User</span>
                 </div>
-                
             </div>
 
             <div class="documents-section">
@@ -341,48 +341,121 @@
                 <p style="text-align: center; color: #7f8c8d; margin-bottom: 25px;">
                     Test various authorization scenarios with different document types and user roles
                 </p>
+
                 <div class="documents-grid">
-                    {% for doc_id, doc in documents.items %}
-                      <div class="document-card {{ doc.department|lower }}">
+                    <!-- Marketing Document -->
+                    <div class="document-card marketing">
                         <div class="document-header">
-                          <div class="document-title">
-                            <i class="fas fa-file-alt"></i> {{ doc.title }}
-                          </div>
-                          <span class="document-status
-                            {% if doc.status == "pending_approval" %}status-pending
-                            {% elif doc.status == "approved" %}status-approved
-                            {% elif doc.status == "rejected" %}status-rejected
-                            {% elif doc.status == "draft" %}status-draft
-                            {% else %}status-unknown{% endif %}">
-                            {{ doc.status|title }}
-                          </span>
+                            <div class="document-title">
+                                <i class="fas fa-bullhorn"></i> Marketing Campaign Plan
+                            </div>
+                            <span class="document-status status-pending">Pending Approval</span>
                         </div>
                         <div class="document-meta">
-                          <div><i class="fas fa-user"></i> Author: {{ doc.author }}</div>
-                          <div><i class="fas fa-building"></i> Department: {{ doc.department }}</div>
-                          <div><i class="fas fa-calendar"></i> Created: {{ doc.created_at }}</div>
+                            <div><i class="fas fa-user"></i> Author: john_doe</div>
+                            <div><i class="fas fa-building"></i> Department: Marketing</div>
+                            <div><i class="fas fa-calendar"></i> Created: Today</div>
                         </div>
                         <div class="action-buttons">
-                          <a href="{% url 'manage_document' doc_id 'view' %}" class="action-btn btn-view">
-                            <i class="fas fa-eye"></i> View
-                          </a>
-                          <a href="{% url 'manage_document' doc_id 'edit' %}" class="action-btn btn-edit">
-                            <i class="fas fa-edit"></i> Edit
-                          </a>
-                          <a href="{% url 'manage_document' doc_id 'approve' %}" class="action-btn btn-approve">
-                            <i class="fas fa-check"></i> Approve
-                          </a>
-                          <a href="{% url 'manage_document' doc_id 'reject' %}" class="action-btn btn-reject">
-                            <i class="fas fa-times"></i> Reject
-                          </a>
-                          <a href="{% url 'manage_document' doc_id 'delete' %}" class="action-btn btn-delete">
-                            <i class="fas fa-trash"></i> Delete
-                          </a>
+                            <a href="{% url 'manage_document' 'doc_marketing_001' 'view' %}" class="action-btn btn-view">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                            <a href="{% url 'manage_document' 'doc_marketing_001' 'edit' %}" class="action-btn btn-edit">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a href="{% url 'manage_document' 'doc_marketing_001' 'approve' %}" class="action-btn btn-approve">
+                                <i class="fas fa-check"></i> Approve
+                            </a>
+                            <a href="{% url 'manage_document' 'doc_marketing_001' 'reject' %}" class="action-btn btn-reject">
+                                <i class="fas fa-times"></i> Reject
+                            </a>
+                            <a href="{% url 'manage_document' 'doc_marketing_001' 'delete' %}" class="action-btn btn-delete">
+                                <i class="fas fa-trash"></i> Delete
+                            </a>
                         </div>
-                      </div>
-                    {% endfor %}
-                  </div>
-                  
+                    </div>
+
+                    <!-- Finance Document -->
+                    <div class="document-card finance">
+                        <div class="document-header">
+                            <div class="document-title">
+                                <i class="fas fa-chart-line"></i> Q4 Budget Report
+                            </div>
+                            <span class="document-status status-approved">Approved</span>
+                        </div>
+                        <div class="document-meta">
+                            <div><i class="fas fa-user"></i> Author: finance_user</div>
+                            <div><i class="fas fa-building"></i> Department: Finance</div>
+                            <div><i class="fas fa-calendar"></i> Created: Yesterday</div>
+                        </div>
+                        <div class="action-buttons">
+                            <a href="{% url 'manage_document' 'doc_finance_001' 'view' %}" class="action-btn btn-view">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                            <a href="{% url 'manage_document' 'doc_finance_001' 'edit' %}" class="action-btn btn-edit">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a href="{% url 'manage_document' 'doc_finance_001' 'delete' %}" class="action-btn btn-delete">
+                                <i class="fas fa-trash"></i> Delete
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- HR Document -->
+                    <div class="document-card hr">
+                        <div class="document-header">
+                            <div class="document-title">
+                                <i class="fas fa-users"></i> Employee Handbook
+                            </div>
+                            <span class="document-status status-draft">Draft</span>
+                        </div>
+                        <div class="document-meta">
+                            <div><i class="fas fa-user"></i> Author: {{ user.username }}</div>
+                            <div><i class="fas fa-building"></i> Department: HR</div>
+                            <div><i class="fas fa-calendar"></i> Created: 2 days ago</div>
+                        </div>
+                        <div class="action-buttons">
+                            <a href="{% url 'manage_document' 'doc_hr_001' 'view' %}" class="action-btn btn-view">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                            <a href="{% url 'manage_document' 'doc_hr_001' 'edit' %}" class="action-btn btn-edit">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a href="{% url 'manage_document' 'doc_hr_001' 'approve' %}" class="action-btn btn-approve">
+                                <i class="fas fa-check"></i> Approve
+                            </a>
+                            <a href="{% url 'manage_document' 'doc_hr_001' 'delete' %}" class="action-btn btn-delete">
+                                <i class="fas fa-trash"></i> Delete
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- IT Document -->
+                    <div class="document-card it">
+                        <div class="document-header">
+                            <div class="document-title">
+                                <i class="fas fa-server"></i> Security Policy
+                            </div>
+                            <span class="document-status status-rejected">Rejected</span>
+                        </div>
+                        <div class="document-meta">
+                            <div><i class="fas fa-user"></i> Author: it_admin</div>
+                            <div><i class="fas fa-building"></i> Department: IT</div>
+                            <div><i class="fas fa-calendar"></i> Created: 1 week ago</div>
+                        </div>
+                        <div class="action-buttons">
+                            <a href="{% url 'manage_document' 'doc_it_001' 'view' %}" class="action-btn btn-view">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                            <a href="{% url 'manage_document' 'doc_it_001' 'edit' %}" class="action-btn btn-edit">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a href="{% url 'manage_document' 'doc_it_001' 'delete' %}" class="action-btn btn-delete">
+                                <i class="fas fa-trash"></i> Delete
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="test-scenarios">
@@ -439,7 +512,6 @@
     </div>
 </body>
 </html>
-
 
 
 

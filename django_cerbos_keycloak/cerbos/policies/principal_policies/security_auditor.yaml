@@ -1,0 +1,34 @@
+# ========================================
+# security_auditor.yaml - FIXED
+# ========================================
+apiVersion: api.cerbos.dev/v1
+principalPolicy:
+  version: default
+  principal: "security_auditor"
+  rules:
+    - resource: document
+      actions:
+        # Read-only access to all documents for auditing purposes
+        - action: "view"
+          effect: EFFECT_ALLOW
+
+        # Can approve security policies
+        - action: "approve"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              expr: request.resource.attr.content_type == 'security_policy'
+
+        # Can approve compliance documents
+        - action: "approve"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              expr: request.resource.attr.content_type == 'compliance_document'
+
+        # Can reject any document that violates security policies
+        - action: "reject"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              expr: request.resource.attr.classification in ['confidential', 'restricted']

@@ -1,0 +1,37 @@
+# ========================================
+# john_doe.yaml - FIXED
+# ========================================
+apiVersion: api.cerbos.dev/v1
+principalPolicy:
+  version: default
+  principal: "john_doe"
+  rules:
+    - resource: document
+      actions:
+        # Can approve Marketing department documents with specific conditions
+        - action: "approve"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.resource.attr.department == 'Marketing'
+                  - expr: request.resource.attr.status == 'pending_approval'
+                  - expr: request.resource.attr.project_budget <= 25000
+
+        # Can view all Marketing documents regardless of status
+        - action: "view"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              expr: request.resource.attr.department == 'Marketing'
+
+        # Special permission to edit brand-related documents
+        - action: "edit"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.resource.attr.content_type == 'brand_document'
+                  - expr: request.resource.attr.classification != 'confidential'
