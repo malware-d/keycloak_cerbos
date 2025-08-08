@@ -48,7 +48,7 @@ DOCUMENT_METADATA = {
         'status': 'approved',
         'created_at': '2025-01-05',
         'classification': 'public',
-        'project_budget': 15000,
+        'project_budget': 1500,
         'content_type': 'brand_document'
     },
     'doc_finance_002': {

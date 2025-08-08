@@ -18,6 +18,7 @@ principalPolicy:
                   - expr: request.resource.attr.department == 'Marketing'
                   - expr: request.resource.attr.status == 'pending_approval'
                   - expr: request.resource.attr.project_budget <= 25000
+          name: john_doe_approve_marketing_budget
 
         # Can view all Marketing documents regardless of status
         - action: "view"
@@ -25,6 +26,7 @@ principalPolicy:
           condition:
             match:
               expr: request.resource.attr.department == 'Marketing'
+          name: john_doe_view_marketing_docs
 
         # Special permission to edit brand-related documents
         - action: "edit"
@@ -35,3 +37,4 @@ principalPolicy:
                 of:
                   - expr: request.resource.attr.content_type == 'brand_document'
                   - expr: request.resource.attr.classification != 'confidential'
+          name: john_doe_edit_brand_docs

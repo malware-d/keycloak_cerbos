@@ -18,6 +18,7 @@ principalPolicy:
                   - expr: request.resource.attr.classification == 'public'
                   - expr: request.resource.attr.content_type in ['project_plan', 'marketing_material']
                   - expr: request.resource.attr.status == 'approved'
+          name: external_consultant_view_assigned
         
         # Time-restricted access (would need to implement time checks in real scenario)
         - action: "edit"
@@ -30,6 +31,7 @@ principalPolicy:
                   - expr: request.resource.attr.classification == 'public'
                   - expr: request.resource.attr.status == 'draft'
                   # In real implementation: check if current date is within contract period
+          name: external_consultant_edit_own_drafts
         
         # Explicitly denied access to internal operations
         - action: "view"
@@ -41,3 +43,4 @@ principalPolicy:
                   - expr: request.resource.attr.department in ['Finance', 'HR']
                   - expr: request.resource.attr.content_type in ['financial_report', 'security_policy']
                   - expr: request.resource.attr.classification in ['confidential', 'restricted']
+          name: external_consultant_deny_internal

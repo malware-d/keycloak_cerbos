@@ -17,6 +17,7 @@ principalPolicy:
                 of:
                   - expr: request.resource.attr.department in ['Marketing', 'IT', 'HR']
                   - expr: request.resource.attr.classification == 'public'
+          name: project_manager_view_cross_dept
 
         # Can edit project-related documents
         - action: "edit"
@@ -27,6 +28,7 @@ principalPolicy:
                 of:
                   - expr: request.resource.attr.project_budget <= 75000
                   - expr: request.resource.attr.status in ['draft', 'pending_approval']
+          name: project_manager_edit_project_docs
 
         # Can approve low-value cross-departmental documents
         - action: "approve"
@@ -38,3 +40,4 @@ principalPolicy:
                   - expr: request.resource.attr.project_budget <= 15000
                   - expr: request.resource.attr.classification in ['internal', 'public']
                   - expr: request.resource.attr.author != request.principal.id
+          name: project_manager_approve_low_value

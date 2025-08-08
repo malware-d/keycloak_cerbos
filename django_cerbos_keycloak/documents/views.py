@@ -2,6 +2,7 @@ from django.http import HttpResponseForbidden, HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from .utils import get_user_roles, get_user_attr
 from .utils import extract_roles_and_attrs_from_session, extract_roles_and_attrs_from_jwt
@@ -12,12 +13,18 @@ import json
 from datetime import datetime
 from .data import DOCUMENT_METADATA
 
+# Global storage để lưu trữ log events cho polling
+log_events_history = []  # Lưu trữ các log gần đây
+MAX_HISTORY = 50
+
+
 def home(request):
     """Enhanced home view with user context"""
     context = {
         'documents': DOCUMENT_METADATA,
         'current_user': request.user.username if request.user.is_authenticated else None
     }
+
     if request.user.is_authenticated:
         context['user_roles'] = get_user_roles(request)
     return render(request, 'documents/home.html', context)
@@ -33,7 +40,11 @@ def manage_document(request, document_id, action):
     
     # Get document metadata
     if document_id not in DOCUMENT_METADATA:
-        return HttpResponseForbidden("Document not found.")
+        context = {
+            'title': '❌ Document Not Found',
+            'content': '<div style="background: #f8d7da; color: #721c24; padding: 20px; border-radius: 8px; border-left: 4px solid #dc3545;"><h3>Error</h3><p>Document not found.</p></div>'
+        }
+        return render(request, 'documents/action_response.html', context)
     
     doc_meta = DOCUMENT_METADATA[document_id]
 
@@ -52,7 +63,11 @@ def manage_document(request, document_id, action):
     
     if not user_roles:
         print(f"[❌] No roles assigned for user: {request.user.username}")
-        return HttpResponseForbidden("No roles assigned. Contact administrator.")
+        context = {
+            'title': '⚠️ No Roles Assigned',
+            'content': '<div style="background: #fff3cd; color: #856404; padding: 20px; border-radius: 8px; border-left: 4px solid #ffc107;"><h3>Configuration Error</h3><p>No roles assigned. Contact administrator.</p></div>'
+        }
+        return render(request, 'documents/action_response.html', context)
     
     print(f"[🔍] User: {request.user.username}, Roles: {user_roles}, Action: {action}, Document: {document_id}")
     
@@ -103,11 +118,23 @@ def manage_document(request, document_id, action):
         if not allowed:
             # Enhanced error messaging based on context
             error_msg = get_authorization_error_message(action, doc_meta, user_roles, request.user.username)
-            return HttpResponseForbidden(error_msg)
+            
+            # Use template for error page with log panel
+            context = {
+                'title': f'❌ Access Denied - {action.title()} Action',
+                'content': f'<div style="background: #f8d7da; color: #721c24; padding: 20px; border-radius: 8px; border-left: 4px solid #dc3545;"><h3>Authorization Error</h3><p>{error_msg}</p></div>'
+            }
+            return render(request, 'documents/action_response.html', context)
             
     except Exception as e:
         print(f"[❌] Cerbos authorization error: {e}")
-        return HttpResponseForbidden("Authorization service unavailable. Please try again later.")
+        
+        # Use template for error page with log panel
+        context = {
+            'title': '⚠️ System Error',
+            'content': '<div style="background: #fff3cd; color: #856404; padding: 20px; border-radius: 8px; border-left: 4px solid #ffc107;"><h3>Service Error</h3><p>Authorization service unavailable. Please try again later.</p></div>'
+        }
+        return render(request, 'documents/action_response.html', context)
     
     # Execute the authorized action
     return execute_document_action(request, document_id, action, doc_meta, principal)
@@ -153,12 +180,7 @@ def execute_document_action(request, document_id, action, doc_meta, principal):
                     <p><strong>Created:</strong> {doc_meta['created_at']}</p>
                     <p><strong>Budget:</strong> ${doc_meta['project_budget']:,}</p>
                 </div>
-                <div style="background: #e8f5e8; padding: 15px; border-radius: 5px; border-left: 4px solid #27ae60;">
-                    <h3>Content Preview</h3>
-                    <p>This is a sample content for {doc_title}. In a real implementation, 
-                    this would contain the actual document content based on the document type 
-                    and classification level.</p>
-                </div>
+
                 <div style="margin-top: 20px;">
                     <a href="/" style="background: #3498db; color: white; padding: 10px 20px; 
                        text-decoration: none; border-radius: 5px;">← Back to Home</a>
@@ -275,7 +297,14 @@ def execute_document_action(request, document_id, action, doc_meta, principal):
         return HttpResponseForbidden(f"Invalid action: {action}")
     
     response_data = responses[action]
-    return HttpResponse(response_data['content'], status=response_data['status'])
+    
+    # Use template for full page layout with log panel
+    context = {
+        'title': response_data['title'],
+        'content': response_data['content']
+    }
+    
+    return render(request, 'documents/action_response.html', context)
 
 @login_required
 @require_http_methods(["GET"])
@@ -423,4 +452,58 @@ def bulk_document_check(request):
 #         return HttpResponseForbidden("Invalid action requested.")
 
 
+@csrf_exempt
+@require_http_methods(["POST"])
+def cerbos_logs_api(request):
+    """
+    API endpoint để nhận log data từ cerbos_log_watcher tool
+    """
+    try:
+        # Parse JSON data từ request
+        log_data = json.loads(request.body)
+        
+        # Thêm timestamp nếu chưa có
+        if 'timestamp' not in log_data:
+            log_data['timestamp'] = datetime.now().isoformat()
+        
+        # Clear history và chỉ giữ log mới nhất
+        log_events_history.clear()
+        log_events_history.append(log_data)
+        
+        # Log để debug
+        logger.info(f"[CERBOS_LOG] Received: {log_data}")
+        
+        return JsonResponse({'status': 'success', 'message': 'Log received'})
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        logger.error(f"[CERBOS_LOG] Error processing log: {e}")
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+
+@require_http_methods(["GET"])
+def cerbos_logs_poll(request):
+    """
+    Polling endpoint để lấy log data (alternative đến SSE)
+    """
+    try:
+        # Trả về tất cả logs hiện có (chỉ có 1 log mới nhất)
+        current_logs = log_events_history.copy() if log_events_history else []
+        
+        return JsonResponse({
+            'status': 'success',
+            'logs': current_logs,
+            'count': len(current_logs)
+        })
+        
+    except Exception as e:
+        logger.error(f"[POLL] Error in polling: {e}")
+        return JsonResponse({
+            'status': 'error', 
+            'message': str(e),
+            'logs': [],
+            'count': 0
+        }, status=500)
 

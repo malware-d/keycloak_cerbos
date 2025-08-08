@@ -14,6 +14,7 @@ principalPolicy:
           condition:
             match:
               expr: request.resource.attr.department == 'Finance'
+          name: finance_manager_view_dept_docs
               
         # Full control over Finance department documents - edit
         - action: "edit"
@@ -21,6 +22,7 @@ principalPolicy:
           condition:
             match:
               expr: request.resource.attr.department == 'Finance'
+          name: finance_manager_edit_dept_docs
               
         # Full control over Finance department documents - approve
         - action: "approve"
@@ -28,6 +30,7 @@ principalPolicy:
           condition:
             match:
               expr: request.resource.attr.department == 'Finance'
+          name: finance_manager_approve_dept_docs
               
         # Full control over Finance department documents - reject
         - action: "reject"
@@ -35,6 +38,7 @@ principalPolicy:
           condition:
             match:
               expr: request.resource.attr.department == 'Finance'
+          name: finance_manager_reject_dept_docs
 
         # Can approve high-value documents (executive privilege)
         - action: "approve"
@@ -45,6 +49,7 @@ principalPolicy:
                 of:
                   - expr: request.resource.attr.project_budget <= 500000
                   - expr: request.resource.attr.is_financial == true
+          name: finance_manager_approve_high_value
 
         # Can delete old financial reports
         - action: "delete"
@@ -56,3 +61,4 @@ principalPolicy:
                   - expr: request.resource.attr.department == 'Finance'
                   - expr: request.resource.attr.content_type == 'financial_report'
                   - expr: request.resource.attr.status != 'approved'
+          name: finance_manager_delete_old_reports

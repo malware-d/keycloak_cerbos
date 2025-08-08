@@ -221,6 +221,11 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
+        'django.server': {
+            'handlers': ['console', 'file'],
+            'level': 'WARNING',  # Tắt INFO logs cho server requests
+            'propagate': False,
+        },
         'allauth': {
             'handlers': ['console', 'file'],
             'level': 'DEBUG',

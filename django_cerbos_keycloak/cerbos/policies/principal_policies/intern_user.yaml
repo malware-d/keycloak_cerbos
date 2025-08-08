@@ -17,6 +17,7 @@ principalPolicy:
                 of:
                   - expr: request.resource.attr.classification == 'public'
                   - expr: request.resource.attr.status == 'approved'
+          name: intern_view_public_approved
 
         # Can edit their own draft documents only
         - action: "edit"
@@ -28,6 +29,7 @@ principalPolicy:
                   - expr: request.resource.attr.author == request.principal.id
                   - expr: request.resource.attr.status == 'draft'
                   - expr: request.resource.attr.classification == 'public'
+          name: intern_edit_own_drafts
 
         # Explicitly denied access to confidential or financial documents
         - action: "view"
@@ -39,3 +41,4 @@ principalPolicy:
                   - expr: request.resource.attr.classification in ['confidential', 'restricted']
                   - expr: request.resource.attr.is_financial == true
                   - expr: request.resource.attr.project_budget > 5000
+          name: intern_deny_confidential_financial
